@@ -1,17 +1,13 @@
-import heapq
-from collections import defaultdict, deque
+from collections import deque
+from sortedcontainers import SortedDict
 
-class LOBHalf:
+class BookHalf:
     def __init__(self, side):
         self.side = side
-        self.price_levels = defaultdict(deque)
-        self.price_heap = []
+        self.price_levels = SortedDict()
 
     def add_order(self, order):
-        lvl = self.price_levels[order.price]
-        if not lvl:
-            heap_key = -order.price if self.side == "bid" else order.price
-            heapq.heappush(self.price_heap, heap_key)
+        lvl = self.price_levels.setdefault(order.price, deque())
         lvl.append(order)
 
     def del_order(self, order):
@@ -20,10 +16,27 @@ class LOBHalf:
         if not lvl:
             del self.price_levels[order.price]
 
-    def best_price(self):
-        while self.price_heap:
-            price = -self.price_heap[0] if self.side == "bid" else self.price_heap[0]
-            if price in self.price_levels:
-                return price
-            heapq.heappop(self.price_heap)
+    def best_order(self):
+        if self.price_levels:
+            if self.side == "bid":
+                return self.price_levels.peekitem(-1)[0]
+            else:
+                return self.price_levels.peekitem(0)[0]
         return None
+
+class LimitOrderBook:
+    def __init__(self):
+        self.bids = BookHalf("bid")
+        self.asks = BookHalf("ask")
+
+    def add_order(self, order):
+        if order.side == "bid":
+            self.bids.add_order(order)
+        else:
+            self.asks.add_order(order)
+
+    def del_order(self, order):
+        if order.side == "bid":
+            self.bids.del_order(order)
+        else:
+            self.bids.del_order(order)

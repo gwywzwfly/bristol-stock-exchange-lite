@@ -39,4 +39,4 @@ class LimitOrderBook:
         if order.side == "bid":
             self.bids.del_order(order)
         else:
-            self.bids.del_order(order)
+            self.asks.del_order(order)

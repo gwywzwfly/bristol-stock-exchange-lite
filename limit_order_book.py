@@ -1,28 +1,47 @@
-from collections import deque
-from sortedcontainers import SortedDict
+import heapq
+from collections import deque, defaultdict
 
 class BookHalf:
     def __init__(self, side):
         self.side = side
-        self.price_levels = SortedDict()
+        self.price_levels = defaultdict(deque)
+        self.snapshot = defaultdict(int)
+        self.price_heap = []
+        self.best_price = None
 
     def add_order(self, order):
-        lvl = self.price_levels.setdefault(order.price, deque())
-        lvl.append(order)
+        self.price_levels[order.price].append(order)
+        self.snapshot[order.price] += 1
+        if self.snapshot[order.price] == 1:
+            priority = -order.price if self.side == "bid" else order.price
+            heapq.heappush(self.price_heap, priority)
+        self._update_best_price()
 
     def del_order(self, order):
-        lvl = self.price_levels[order.price]
-        lvl.remove(order)
-        if not lvl:
-            del self.price_levels[order.price]
+        if order.price in self.price_levels:
+            try:
+                self.price_levels[order.price].remove(order)
+                self.snapshot[order.price] -= 1
+                if self.snapshot[order.price] == 0:
+                    del self.price_levels[order.price]
+                    del self.snapshot[order.price]
+                    self._update_best_price()
+            except ValueError:
+                pass
+
+    def _update_best_price(self):
+        while self.price_heap:
+            candidate = -self.price_heap[0] if self.side == "bid" else self.price_heap[0]
+            if self.snapshot.get(candidate) > 0:
+                self.best_price = candidate
+                break
+            else:
+                heapq.heappop(self.price_heap)
+        else:
+            self.best_price = None
 
     def best_order(self):
-        if self.price_levels:
-            if self.side == "bid":
-                return self.price_levels.peekitem(-1)[0]
-            else:
-                return self.price_levels.peekitem(0)[0]
-        return None
+        return self.price_levels[self.best_price][0]
 
 class LimitOrderBook:
     def __init__(self):
